@@ -1,76 +1,136 @@
-<%@ page import="java.net.*, java.io.*" %>
-<%@ page import="org.json.JSONObject" %>
-
+<!DOCTYPE html>
 <html>
 <head>
     <title>Login</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
 
-<div style="width:300px;margin:auto;margin-top:100px;border:1px solid black;padding:20px;">
-    <h2>Login</h2>
+<div class="main">
 
-    <form method="post">
-        Email:<br>
-        <input type="text" name="email"/><br><br>
+    <div class="card">
+        <div class="logo">
+            <img src="/images/logo.png">
+        </div>
 
-        Password:<br>
-        <input type="password" name="password"/><br><br>
+        <div class="small-text">Welcome back !!!</div>
 
-        <button type="submit">Login</button>
-    </form>
+        <h2>Sign in</h2>
 
-    <br>
-    <a href="register.jsp">Register</a>
+        <form id="loginForm">
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" name="email" placeholder="test@gmail.com">
+            </div>
+
+            <div class="input-group">
+                <div class="row">
+                    <label>Password</label>
+                    <a href="#">Forgot Password?</a>
+                </div>
+                <input type="password" name="password" placeholder="********">
+                <div id="errorMsg" style="color:#ff5a3c;font-size:12px;margin-top:5px;"></div>
+            </div>
+
+            <button type="submit" class="btn" id="loginBtn">
+                <span id="btnText">SIGN IN</span>
+                <span id="spinner" class="spinner"></span>
+            </button>
+        </form>
+
+        <div class="divider">
+            <span>or login using</span>
+        </div>
+
+        <div class="socials">
+            <form action="/oauth2/authorization/google" method="get">
+                <button type="button" class="social-btn">
+                    <img src="/images/google.png">
+                </button>
+            </form>
+
+            <form action="/oauth2/authorization/facebook" method="get">
+                <button type="button" class="social-btn">
+                    <img src="/images/facebook.png">
+                </button>
+            </form>
+
+            <form action="/oauth2/authorization/github" method="get">
+                <button type="button" class="social-btn">
+                    <img src="/images/github.png">
+                </button>
+            </form>
+        </div>
+
+        <div class="signup">
+            Don’t have an account? <a href="/register">Sign up</a>
+        </div>
+    </div>
+
 </div>
 
-<%
-String email = request.getParameter("email");
-String password = request.getParameter("password");
+<script>
+document.addEventListener("DOMContentLoaded", function () {
 
-if(email != null && password != null){
+    const form = document.getElementById("loginForm");
+    const btnText = document.getElementById("btnText");
+    const spinner = document.getElementById("spinner");
+    const btn = document.getElementById("loginBtn");
+    const errorMsg = document.getElementById("errorMsg");
 
-    try {
-        URL url = new URL("http://localhost:8081/api/auth/login");
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+    form.addEventListener("submit", async function(e) {
+        e.preventDefault();
 
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", "application/json");
-        conn.setDoOutput(true);
+        const email = document.querySelector('input[name="email"]').value;
+        const password = document.querySelector('input[name="password"]').value;
 
-        String jsonInput = "{ \"email\": \"" + email + "\", \"password\": \"" + password + "\" }";
+        errorMsg.innerText = "";
 
-        OutputStream os = conn.getOutputStream();
-        os.write(jsonInput.getBytes());
-        os.flush();
-        os.close();
+        btnText.innerText = "Loading...";
+        spinner.style.display = "inline-block";
+        btn.disabled = true;
 
-        BufferedReader in = new BufferedReader(
-            new InputStreamReader(conn.getInputStream())
-        );
+        try {
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
+            });
 
-        StringBuilder responseStr = new StringBuilder();
-        String line;
+            let data;
 
-        while ((line = in.readLine()) != null) {
-            responseStr.append(line);
+            try {
+                data = await response.json();
+            } catch {
+                data = { message: "Invalid email or password" };
+            }
+
+            if (!response.ok) {
+                throw new Error(data.message || "Login failed");
+            }
+
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("email", data.email);
+
+            window.location.href = "/home";
+
+        } catch (error) {
+            errorMsg.innerText = error.message;
+
+            btnText.innerText = "SIGN IN";
+            spinner.style.display = "none";
+            btn.disabled = false;
         }
+    });
 
-        JSONObject json = new JSONObject(responseStr.toString());
-
-        String token = json.getString("token");
-
-        session.setAttribute("token", token);
-
-        response.sendRedirect("products.jsp");
-
-    } catch(Exception e){
-%>
-        <p style="color:red;">Login Failed</p>
-<%
-    }
-}
-%>
+});
+</script>
 
 </body>
 </html>

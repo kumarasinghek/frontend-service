@@ -1,151 +1,99 @@
-<%@ page import="java.util.*" %>
-
-<%
-    List<Map<String, String>> cart = (List<Map<String, String>>) session.getAttribute("cart");
-
-    if(cart == null){
-        cart = new ArrayList<>();
-    }
-
-    String id = request.getParameter("id");
-
-    if(id != null){
-        Map<String, String> item = new HashMap<>();
-        item.put("id", id);
-        item.put("name", request.getParameter("name"));
-        item.put("price", request.getParameter("price"));
-
-        cart.add(item);
-    }
-
-    String removeId = request.getParameter("removeId");
-
-    if(removeId != null){
-        cart.removeIf(item -> item.get("id").equals(removeId));
-    }
-
-    session.setAttribute("cart", cart);
-
-    double total = 0;
-    for(Map<String, String> item : cart){
-        total += Double.parseDouble(item.get("price"));
-    }
-%>
-
+<!DOCTYPE html>
 <html>
 <head>
     <title>Cart</title>
-
-    <style>
-        body {
-            font-family: Arial;
-            background: #f5f5f5;
-            padding: 20px;
-        }
-
-        h2 {
-            text-align: center;
-        }
-
-        .container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-        }
-
-        .card {
-            background: white;
-            padding: 15px;
-            width: 220px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        .price {
-            color: green;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-
-        .empty {
-            text-align: center;
-            font-size: 18px;
-            color: gray;
-        }
-
-        button {
-            background: red;
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .checkout {
-            display: block;
-            margin: 30px auto;
-            background: green;
-            padding: 10px 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
-
 <body>
 
-<div class="top-bar">
-    <a href="products.jsp">⬅ Back</a>
-    <h3>Total: Rs. <%= total %></h3>
-</div>
+<div class="main">
+    <div class="card" style="width:800px">
 
-<h2>Your Cart</h2>
+        <h2>Your Cart</h2>
 
-<div class="container">
+        <div id="cartItems"></div>
 
-<%
-if(cart.isEmpty()){
-%>
-    <div class="empty">Your cart is empty 🛒</div>
-<%
-} else {
+        <h3 id="total"></h3>
 
-    for(Map<String, String> item : cart){
-%>
+        <button onclick="goToProducts()">Back to Products</button>
 
-    <div class="card">
-        <h3><%= item.get("name") %></h3>
-        <p class="price">Rs. <%= item.get("price") %></p>
-
-        <form method="post">
-            <input type="hidden" name="removeId" value="<%= item.get("id") %>"/>
-            <button type="submit">Remove</button>
-        </form>
     </div>
-
-<%
-    }
-}
-%>
-
 </div>
 
-<%
-if(!cart.isEmpty()){
-%>
-<form action="orders.jsp" method="post">
-    <button class="checkout">Checkout</button>
-</form>
-<%
+<script src="/js/api.js"></script>
+
+<script>
+const email = localStorage.getItem("email");
+
+if (!email) {
+    window.location.href = "/login";
 }
-%>
+
+async function removeItem(itemId) {
+    await apiRequest("/orders/cart/item/" + itemId, "DELETE");
+    loadCart(); // refresh cart
+}
+
+async function loadCart() {
+
+    const data = await apiRequest("/orders/cart/" + email);
+    console.log("CART DATA:", data);
+
+    const container = document.getElementById("cartItems");
+    const total = document.getElementById("total");
+
+    container.innerHTML = "";
+
+    if (!data || !data.items || data.items.length === 0) {
+        container.innerHTML = "<p>Your cart is empty</p>";
+        total.innerText = "";
+        return;
+    }
+
+    data.items.forEach(item => {
+
+        const price = Number(item.price);
+        const quantity = item.quantity;
+        const productId = item.productId;
+        const itemTotal = price * quantity;
+
+        const card = document.createElement("div");
+        card.className = "product-card";
+
+        const h3 = document.createElement("h3");
+        h3.innerText = "Product ID: " + productId;
+
+        const q = document.createElement("p");
+        q.innerText = "Quantity: " + quantity;
+
+        const p = document.createElement("p");
+        p.innerText = "Price: $" + price;
+
+        const t = document.createElement("p");
+        t.innerText = "Total: $" + itemTotal;
+
+        const removeBtn = document.createElement("button");
+        removeBtn.innerText = "Remove";
+        removeBtn.onclick = () => removeItem(item.id);
+
+        card.appendChild(h3);
+        card.appendChild(q);
+        card.appendChild(p);
+        card.appendChild(t);
+        card.appendChild(removeBtn);
+
+        container.appendChild(card);
+    });
+
+    total.innerText = "Total: $" + data.totalAmount;
+}
+
+function goToProducts() {
+    window.location.href = "/products";
+}
+
+loadCart();
+</script>
 
 </body>
 </html>

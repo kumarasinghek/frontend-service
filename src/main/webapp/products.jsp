@@ -1,75 +1,107 @@
-<%@ page import="java.net.*, java.io.*" %>
-<%@ page import="org.json.JSONArray" %>
-<%@ page import="org.json.JSONObject" %>
-
+<!DOCTYPE html>
 <html>
 <head>
     <title>Products</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
-<div style="width:600px;margin:auto;border:1px solid black;padding:20px;">
+<div class="main">
+    <div class="card" style="width:800px">
 
-<h2>Products</h2>
+        <h2>Products</h2>
+		<button onclick="goToCart()">View Cart</button>
+        <div id="productList" class="products-grid"></div>
 
-<a href="cart.jsp">Cart</a> |
-<a href="logout.jsp">Logout</a>
+        <button onclick="logout()">Logout</button>
 
-<br><br>
-
-<%
-String token = (String) session.getAttribute("token");
-
-try {
-    URL url = new URL("http://localhost:8082/products");
-    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-    conn.setRequestMethod("GET");
-
-    if(token != null){
-        conn.setRequestProperty("Authorization", "Bearer " + token);
-    }
-
-    BufferedReader in = new BufferedReader(
-        new InputStreamReader(conn.getInputStream())
-    );
-
-    StringBuilder responseStr = new StringBuilder();
-    String line;
-
-    while ((line = in.readLine()) != null) {
-        responseStr.append(line);
-    }
-
-    JSONArray products = new JSONArray(responseStr.toString());
-
-    for(int i=0; i<products.length(); i++){
-        JSONObject p = products.getJSONObject(i);
-%>
-
-<div style="border:1px solid black;margin:10px;padding:10px;">
-    <b><%= p.get("name") %></b><br>
-    Price: <%= p.get("price") %>
-
-    <form action="cart.jsp" method="post">
-        <input type="hidden" name="id" value="<%= p.get("id") %>"/>
-        <input type="hidden" name="name" value="<%= p.get("name") %>"/>
-        <input type="hidden" name="price" value="<%= p.get("price") %>"/>
-        <button>Add to Cart</button>
-    </form>
+    </div>
 </div>
 
-<%
-    }
+<script src="/js/api.js"></script>
 
-} catch(Exception e){
-%>
-    <p style="color:red;">Error loading products</p>
-<%
+<script>
+const token = localStorage.getItem("token");
+
+if (!token) {
+    window.location.href = "/login";
 }
-%>
 
-</div>
+function goToCart() {
+    window.location.href = "/cart";
+}
+
+// 🔥 ADD TO CART FUNCTION
+async function addToCart(productId) {
+    try {
+        const email = localStorage.getItem("email");
+
+        await apiRequest("/orders/cart/add", "POST", {
+            productId: productId,
+            quantity: 1,
+            email: email
+        });
+
+        alert("Added to cart");
+
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+// 🔥 LOAD PRODUCTS
+async function loadProducts() {
+    const data = await apiRequest("/api/products");
+
+    const container = document.getElementById("productList");
+    container.innerHTML = "";
+
+    if (!data || !Array.isArray(data)) {
+        container.innerHTML = "<p>Data not loaded correctly</p>";
+        return;
+    }
+
+    data.forEach(p => {
+
+        const card = document.createElement("div");
+        card.className = "product-card";
+
+        const name = document.createElement("h3");
+        name.innerText = p.name;
+
+        const desc = document.createElement("p");
+        desc.className = "desc";
+        desc.innerText = p.description;
+
+        const price = document.createElement("div");
+        price.className = "price";
+        price.innerText = "$" + p.price;
+
+        const btn = document.createElement("button");
+        btn.className = "add-btn";
+        btn.innerText = "Add to Cart";
+
+        // 🔥 IMPORTANT LINE (this was missing before)
+        btn.onclick = () => addToCart(p.id);
+
+        card.appendChild(name);
+        card.appendChild(desc);
+        card.appendChild(price);
+        card.appendChild(btn);
+
+        container.appendChild(card);
+    });
+}
+
+// 🔥 LOGOUT
+function logout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("email");
+    window.location.href = "/login";
+}
+
+loadProducts();
+</script>
 
 </body>
 </html>
