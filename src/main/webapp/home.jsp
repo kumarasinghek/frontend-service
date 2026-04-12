@@ -2,30 +2,59 @@
 <html>
 <head>
     <title>Home</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 
-<h2>Welcome ✅ Logged in</h2>
+<div class="main">
+    <div class="card" style="width:500px; text-align:center;">
 
-<button onclick="logout()">Logout</button>
+        <h2>Welcome</h2>
+        <p class="small-text">Choose where to go</p>
 
-<script src="/js/api.js"></script>
+        <div style="margin-top:30px; display:flex; flex-direction:column; gap:15px;">
+
+            <div class="home-actions">
+			    <div class="home-card" onclick="goToProducts()">
+			        <span>Browse Products</span>
+			    </div>
+			    <div class="home-card" onclick="goToCart()">
+			        <span>Your Cart</span>
+			    </div>
+			    <div class="home-card" onclick="goToOrders()">
+					<span>Your Orders</span>
+			    </div>
+			</div>
+<button class="btn btn-secondary" onclick="logout()">Logout</button>
+
+        </div>
+
+    </div>
+</div>
 
 <script>
-const token = localStorage.getItem("token");
-
-if (!token) {
-    window.location.href = "/login";
+function goToProducts() {
+    window.location.href = "/products";
 }
 
-// TEST API CALL
-apiRequest("/api/auth/test")  // you can change later
-    .then(data => console.log("API RESPONSE:", data))
-    .catch(err => console.error(err));
+function goToCart() {
+    window.location.href = "/cart";
+}
+
+function goToOrders() {
+    window.location.href = "/orders";
+}
 
 function logout() {
     localStorage.removeItem("token");
+    localStorage.removeItem("email");
     window.location.href = "/login";
+}
+
+const email = localStorage.getItem("email");
+
+if (email) {
+    document.querySelector("h2").innerText = "Welcome, " + email;
 }
 </script>
 

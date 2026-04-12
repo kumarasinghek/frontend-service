@@ -15,8 +15,10 @@
 
         <h3 id="total"></h3>
 
-        <button onclick="goToProducts()">Back to Products</button>
-        <button onclick="checkout()">Checkout</button>
+        <div class="cart-actions">
+    	<button class="btn-secondary" onclick="goToProducts()">Back</button>
+    	<button class="btn" onclick="checkout()">Checkout</button>
+</div>
 
     </div>
 </div>
@@ -24,15 +26,10 @@
 <script src="/js/api.js"></script>
 
 <script>
-const email = localStorage.getItem("email");
-
-if (!email) {
-    window.location.href = "/login";
-}
 
 // REMOVE ITEM
 async function removeItem(itemId) {
-    await apiRequest("/orders/cart/item/" + itemId, "DELETE");
+    await apiRequest("/api/orders/cart/item/" + itemId, "DELETE");
     loadCart();
 }
 
@@ -43,7 +40,7 @@ async function updateQty(itemId, qty) {
         return;
     }
 
-    await apiRequest("/orders/cart/item/" + itemId, "PUT", {
+    await apiRequest("/api/orders/cart/item/" + itemId, "PUT", {
         quantity: qty
     });
 
@@ -52,9 +49,13 @@ async function updateQty(itemId, qty) {
 
 async function checkout() {
 
-    await apiRequest("/orders/cart/checkout/" + email, "PUT");
+    const res = await apiRequest("/api/orders/cart/checkout", "PUT");
 
-    alert("Order placed successfully!");
+    if (res.status === "PAID") {
+        alert("Payment successful");
+    } else {
+        alert("Payment failed");
+    }
 
     window.location.href = "/products";
 }
@@ -74,7 +75,7 @@ async function getProduct(productId) {
 // LOAD CART
 async function loadCart() {
 
-    const data = await apiRequest("/orders/cart/" + email);
+    const data = await apiRequest("/api/orders/cart");
     console.log("CART DATA:", data);
 
     const container = document.getElementById("cartItems");
@@ -104,7 +105,7 @@ async function loadCart() {
         const itemTotal = price * quantity;
 
         const card = document.createElement("div");
-        card.className = "product-card";
+        card.className = "product-card cart-item";
 
         const h3 = document.createElement("h3");
         h3.innerText = productName;
@@ -123,6 +124,7 @@ async function loadCart() {
         removeBtn.onclick = () => removeItem(item.id);
 
         const controls = document.createElement("div");
+        controls.className = "cart-controls";
 
         const minus = document.createElement("button");
         minus.innerText = "-";
@@ -150,19 +152,6 @@ async function loadCart() {
     }
 
     total.innerText = "Total: Rs. " + data.totalAmount;
-}
-
-async function checkout() {
-
-    const res = await apiRequest("/orders/cart/checkout/" + email, "PUT");
-
-    if (res.status === "PAID") {
-        alert("Payment successful 🎉");
-    } else {
-        alert("Payment failed ❌");
-    }
-
-    window.location.href = "/products";
 }
 
 // NAVIGATION

@@ -10,9 +10,16 @@
     <div class="card" style="width:800px">
 
         <h2>Products</h2>
-		<button onclick="goToCart()">View Cart</button>
+        
+        <!-- ✅ FIX 1: This is correct (keep this) -->
+        <div class="products-container" id="productsContainer"></div>
+
+        <button onclick="goToCart()">View Cart</button>
+
+        <!-- ⚠️ (Not removed, but now unused) -->
         <div id="productList" class="products-grid"></div>
 
+        <button onclick="goToOrders()">My Orders</button>
         <button onclick="logout()">Logout</button>
 
     </div>
@@ -36,7 +43,7 @@ async function addToCart(productId) {
     try {
         const email = localStorage.getItem("email");
 
-        await apiRequest("/orders/cart/add", "POST", {
+        await apiRequest("/api/orders/cart/add", "POST", {
             productId: productId,
             quantity: 1,
             email: email
@@ -51,46 +58,71 @@ async function addToCart(productId) {
 
 // 🔥 LOAD PRODUCTS
 async function loadProducts() {
-    const data = await apiRequest("/api/products");
+	const response = await fetch("/api/products", {
+	    headers: {
+	        "Authorization": "Bearer " + token
+	    }
+	});
+    
+	if (!response.ok) {
+	    throw new Error("Failed to fetch products");
+	}
 
-    const container = document.getElementById("productList");
+	const products = await response.json();
+
+    const container = document.getElementById("productsContainer");
     container.innerHTML = "";
 
-    if (!data || !Array.isArray(data)) {
-        container.innerHTML = "<p>Data not loaded correctly</p>";
-        return;
-    }
+    for (const product of products) {
 
-    data.forEach(p => {
-
+        // ✅ CREATE FIRST
         const card = document.createElement("div");
         card.className = "product-card";
 
-        const name = document.createElement("h3");
-        name.innerText = p.name;
+        // ✅ THEN ADD CLICK
+        card.style.cursor = "pointer";
+        card.onclick = () => {
+            window.location.href = "/products/" + product.id;
+        };
 
-        const desc = document.createElement("p");
-        desc.className = "desc";
-        desc.innerText = p.description;
+        const img = document.createElement("img");
+        img.src = product.imageUrl;
+        img.className = "product-image";
+
+        img.onerror = () => {
+            img.src = "https://via.placeholder.com/300";
+        };
+
+        const name = document.createElement("div");
+        name.className = "product-name";
+        name.innerText = product.name;
+
+        const desc = document.createElement("div");
+        desc.className = "product-description";
+        desc.innerText = product.description;
 
         const price = document.createElement("div");
-        price.className = "price";
-        price.innerText = "$" + p.price;
+        price.className = "product-price";
+        price.innerText = "Rs. " + product.price;
 
         const btn = document.createElement("button");
         btn.className = "add-btn";
         btn.innerText = "Add to Cart";
 
-        // 🔥 IMPORTANT LINE (this was missing before)
-        btn.onclick = () => addToCart(p.id);
+        // ✅ IMPORTANT FIX (prevent navigation on button click)
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            addToCart(product.id);
+        };
 
+        card.appendChild(img);
         card.appendChild(name);
         card.appendChild(desc);
         card.appendChild(price);
         card.appendChild(btn);
 
         container.appendChild(card);
-    });
+    }
 }
 
 // 🔥 LOGOUT
@@ -98,6 +130,10 @@ function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("email");
     window.location.href = "/login";
+}
+
+function goToOrders() {
+    window.location.href = "/orders";
 }
 
 loadProducts();
